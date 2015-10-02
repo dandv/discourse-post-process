@@ -1,0 +1,31 @@
+{
+  "name": "discourse-postprocess",
+  "version": "1.0.0",
+  "description": "Update/alter/modify/process Discourse forum posts via its API",
+  "main": "index.js",
+  "dependencies": {
+    "discourse-api": "^1.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/dandv/discourse-postprocess.git"
+  },
+  "keywords": [
+    "Discourse",
+    "forum",
+    "update",
+    "modify",
+    "process",
+    "posts"
+  ],
+  "author": "Dan Dascalescu, @dandv",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dandv/discourse-postprocess/issues"
+  },
+  "homepage": "https://github.com/dandv/discourse-postprocess#readme"
+}

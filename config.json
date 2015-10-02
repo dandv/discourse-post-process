@@ -1,0 +1,10 @@
+{
+
+  "url": "http://discourse.example.com",
+
+  "api": {
+    "key": "<your Discourse admin API key here>",
+    "username": "admin",
+  }
+
+}
