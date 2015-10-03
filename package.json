@@ -1,6 +1,6 @@
 {
   "name": "discourse-postprocess",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Update/alter/modify/process Discourse forum posts via its API",
   "main": "index.js",
   "dependencies": {

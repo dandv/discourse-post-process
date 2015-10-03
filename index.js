@@ -11,7 +11,13 @@ let
 // Obtain an array in the format "<old_id>": "post:<post_num>, topic:<topic_id>" by running an import script
 // patched to `puts "\nXXX \"#{quoted_post_id}\": \"post:#{post.post_number}, topic:#{post.topic_id}\""`,
 // for example after this line: https://github.com/discourse/discourse/pull/3802/files#diff-45f56f21760a426538b1ae78cdd2ab81R173
-let post_id_to_post_num_and_topic = JSON.parse(fs.readFileSync(path.normalize(__dirname + '/post_id_mapping.json', 'utf8')));
+let post_id_to_post_num_and_topic = null;
+try {
+    post_id_to_post_num_and_topic = JSON.parse(fs.readFileSync(path.normalize(__dirname + '/post_id_mapping.json', 'utf8')));
+} catch (error) {
+    console.warn('post_id_mapping.json not found. No quote processing will be done.');
+}
+
 
 
 let tasks = [
@@ -26,7 +32,7 @@ let tasks = [
 
     // MyBB hyperlinks '(http://example.com)' correctly. Discourse does not - https://meta.discourse.org/t/url-auto-linking-doesnt-hyperlink-if-open-paren-precedes-the-protocol/33630/1
     function URLsInParens(raw) {
-        return raw.replace(/\(([a-z]+:\/\/[^ )]+)\)/g, '([$1]($1))');
+        return raw.replace(/[^\]]\(([a-z]+:\/\/[^ )]+)\)/g, '([$1]($1))');  // don't process URLs in parens that are part of Markdown URLS, e.g. [text](http://...)
     },
 
     // Convert [url=...]text[/url] to Markdown
@@ -49,6 +55,8 @@ let tasks = [
             .replace('Gary_Isaac_Wolf', 'Agaricus');  // TODO this would be useful for @mentions too; make configurable
         }
 
+        if (!post_id_to_post_num_and_topic) return raw;
+
         return raw.replace(
             /\[quote='([^']+)'.*?pid='(\d+).*?]/g,
             function (match, username, pid) {
@@ -66,7 +74,7 @@ let tasks = [
 ];
 
 let warningPatterns = {
-    "unescaped '<' character": /</g,
+    "unescaped '<' character": /<(?!a |\/a>|\/?kbd>|img )/g,  // `<a href` or `<a name` are fine
     'leading spaces that bbcode ignores but Discourse formats as code': /^    +\S/mg,
     'list in BBCode format': /\[list]/g,
     'BBCode underline': /\[u]/g,  // Discourse handles that, but it may also be an underline for a converted link. TODO check only if it's in a URL?
@@ -75,10 +83,36 @@ let warningPatterns = {
     'link to MyBB post/thread': /forum\.quantifiedself\.com/g,  // TODO make this configurable
     'potential old post number reference': /post.*?#\d+/ig,  // See posts #77 and #85
     'potential code block': /\(\) \{/g,
-    'potential list item without preceding newline': /[^\n]\n-\s+/mg,
+    'potential list item without preceding newline': /^[^-*\n].*\n[-*]\s+/mg,  // avoid false positives on items 2..n of a list
     'BBCode font tag': /\[font=/mg,  // echoed raw
     'BBCode size tag': /\[size=/mg  // seems to be ignored
 };
+
+function processPost(raw) {
+    // Run all processing tasks.
+    let replacements = [];
+    for (let task of tasks) {
+        let result = task(raw);
+        if (result !== raw) {
+            replacements.push(task.name);
+            raw = result;
+        }
+    }
+
+    // Check for warning patterns.
+    let warnings = [];
+    for (let warning of Object.keys(warningPatterns)) {
+        let howMany = raw.match(warningPatterns[warning]);
+        if (howMany) warnings.push(warning + ` (x${howMany.length})`);
+    }
+
+    return {
+        raw: raw,
+        replacements: replacements,
+        warnings: warnings
+    };
+}
+
 
 function doPostProcess() {
     let count = 0;
@@ -87,41 +121,25 @@ function doPostProcess() {
 
     for (let id = 1; id <= lastPost; id++) {
         let post = api.getPostSync(id);
-        let replaced = post.raw;
-        let replacements = [];
 
-        if (/\[color=/.test(replaced)) {
+        let processedPost = processPost(post.raw);
+
+        if (/\[color=/.test(processedPost.raw)) {
             countColorUsed++;
         }
 
-        // Run all processing tasks.
-        for (let task of tasks) {
-            let result = task(replaced);
-            if (result !== replaced) {
-                replacements.push(task.name);
-                replaced = result;
-            }
-        }
-
-        // Check for warning patterns.
-        let warnings = [];
-        for (let warning of Object.keys(warningPatterns)) {
-            let howMany = replaced.match(warningPatterns[warning]);
-            if (howMany) warnings.push(warning + ` (x${howMany.length})`);
-        }
-
-        if (warnings.length) {
-            console.warn(`WARNING: post ${config.url}/p/${id} contains:`, warnings.join(', '));
+        if (processedPost.warnings.length) {
+            console.warn(`WARNING: post ${config.url}/p/${id} contains:`, processedPost.warnings.join(', '));
         }
 
         // If the resulting post is no longer the same, update it.
-        if (replacements.length) {
-            let result = api.updatePostSync(id, replaced, 'Fix formatting post-migration: ' + replacements.join(', '));
+        if (processedPost.replacements.length >= 2 || (processedPost.replacements.length === 1 && processedPost.replacements[0] !== 'rmCRs')) {  // CR removals *alone* are too insignificant to create a revision for
+            let result = api.updatePostSync(id, processedPost.raw, 'Fix formatting post-migration: ' + processedPost.replacements.join(', '));
             if (result.statusCode === 200) {
-                console.log(`Fixed in post ${config.url}/p/${id}:`, replacements.join(', '));
+                console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
                 count++;
             } else {
-                console.error('Error:', result);
+                console.error(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
             }
         }
         // break;  // uncomment this and modify the for line if you only want to process a single post
