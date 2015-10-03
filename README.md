@@ -9,7 +9,7 @@ I've tested the script manually on [400+](http://discourse.quantifiedselfforum.c
 
 ## Dependencies
 
-The script uses ES6 and thus requires Node v4 or later. The `discourse-api` module needs to accept [these two simple pull requests](https://github.com/dandv/discourse-post-process/issues/1) in order for the script to run.
+The script uses ES6 features and thus requires Node v4 or later.
 
 
 ## Usage
