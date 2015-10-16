@@ -119,21 +119,33 @@ function doPostProcess() {
     let countColorUsed = 0;
     let lastPost = api.getLastPostIdSync();
 
-    for (let id = 1; id <= lastPost; id++) {
+    for (let id = 1; id <= lastPost; id++) {  // to change only one post, replace 1 and lastPost with its id
         let post = api.getPostSync(id);
 
+        if (post.deleted_at) {
+            console.log(`Skipping deleted post ${config.url}/p/${id}`);
+            continue;
+        }
+
+        if (post.errors) {
+            console.error(`Error getting post ${id}: ${post.errors}`);
+            continue;
+        }
+
         let processedPost = processPost(post.raw);
+
+        if (!post.topic_id) processedPost.warnings.push('no topic id');
 
         if (/\[color=/.test(processedPost.raw)) {
             countColorUsed++;
         }
 
         if (processedPost.warnings.length) {
-            console.warn(`WARNING: post ${config.url}/p/${id} contains:`, processedPost.warnings.join(', '));
+            console.log(`WARNING: post ${config.url}/p/${id} contains:`, processedPost.warnings.join(', '));
         }
 
-        // If the resulting post is no longer the same, update it.
-        if (processedPost.replacements.length >= 2 || (processedPost.replacements.length === 1 && processedPost.replacements[0] !== 'rmCRs')) {  // CR removals *alone* are too insignificant to create a revision for
+        // If the resulting post is no longer the same, update it, unless all we'd do is remove CRs (too insignificant to create a revision for)
+        if (processedPost.replacements.length >= 2 || (processedPost.replacements.length === 1 && processedPost.replacements[0] !== 'rmCRs')) {
             let result = api.updatePostSync(id, processedPost.raw, 'Fix formatting post-migration: ' + processedPost.replacements.join(', '));
             if (result.statusCode === 200) {
                 console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
@@ -142,7 +154,6 @@ function doPostProcess() {
                 console.error(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
             }
         }
-        // break;  // uncomment this and modify the for line if you only want to process a single post
     }
 
     console.log('\n\nTotal posts updated:', count);

@@ -4,7 +4,8 @@
   "description": "Update/alter/modify/process Discourse forum posts via its API",
   "main": "index.js",
   "dependencies": {
-    "discourse-api": "^1.4.0"
+    "discourse-api": "^1.4.0",
+    "sync-request": "^2.1.0"
   },
   "devDependencies": {},
   "scripts": {
