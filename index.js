@@ -120,39 +120,43 @@ function doPostProcess() {
     let lastPost = api.getLastPostIdSync();
 
     for (let id = 1; id <= lastPost; id++) {  // to change only one post, replace 1 and lastPost with its id
-        let post = api.getPostSync(id);
+        try {
+            let post = api.getPostSync(id);
 
-        if (post.deleted_at) {
-            console.log(`Skipping deleted post ${config.url}/p/${id}`);
-            continue;
-        }
-
-        if (post.errors) {
-            console.log(`Error getting post ${id}: ${post.errors}`);
-            continue;
-        }
-
-        let processedPost = processPost(post.raw);
-
-        if (!post.topic_id) processedPost.warnings.push('no topic id');
-
-        if (/\[color=/.test(processedPost.raw)) {
-            countColorUsed++;
-        }
-
-        if (processedPost.warnings.length) {
-            console.log(`WARNING: post ${config.url}/p/${id} contains:`, processedPost.warnings.join(', '));
-        }
-
-        // If the resulting post is no longer the same, update it, unless all we'd do is remove CRs (too insignificant to create a revision for)
-        if (processedPost.replacements.length >= 2 || (processedPost.replacements.length === 1 && processedPost.replacements[0] !== 'rmCRs')) {
-            let result = api.updatePostSync(id, processedPost.raw, 'Fix formatting post-migration: ' + processedPost.replacements.join(', '));
-            if (result.statusCode === 200) {
-                console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
-                count++;
-            } else {
-                console.log(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
+            if (post.deleted_at) {
+                console.log(`Skipping deleted post ${config.url}/p/${id}`);
+                continue;
             }
+
+            if (post.errors) {
+                console.log(`Error getting post ${id}: ${post.errors}`);
+                continue;
+            }
+
+            let processedPost = processPost(post.raw);
+
+            if (!post.topic_id) processedPost.warnings.push('no topic id');
+
+            if (/\[color=/.test(processedPost.raw)) {
+                countColorUsed++;
+            }
+
+            if (processedPost.warnings.length) {
+                console.log(`WARNING: post ${config.url}/p/${id} contains:`, processedPost.warnings.join(', '));
+            }
+
+            // If the resulting post is no longer the same, update it, unless all we'd do is remove CRs (too insignificant to create a revision for)
+            if (processedPost.replacements.length >= 2 || (processedPost.replacements.length === 1 && processedPost.replacements[0] !== 'rmCRs')) {
+                let result = api.updatePostSync(id, processedPost.raw, 'Fix formatting post-migration: ' + processedPost.replacements.join(', '));
+                if (result.statusCode === 200) {
+                    console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
+                    count++;
+                } else {
+                    console.log(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
+                }
+            }
+        } catch (error) {
+            console.log(`Exception error while processing post ${id}:`, error);
         }
     }
 
