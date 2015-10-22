@@ -128,7 +128,7 @@ function doPostProcess() {
         }
 
         if (post.errors) {
-            console.error(`Error getting post ${id}: ${post.errors}`);
+            console.log(`Error getting post ${id}: ${post.errors}`);
             continue;
         }
 
@@ -151,7 +151,7 @@ function doPostProcess() {
                 console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
                 count++;
             } else {
-                console.error(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
+                console.log(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
             }
         }
     }
@@ -163,5 +163,26 @@ function doPostProcess() {
 
 }
 
+function deleteAndBlockUsers(filter) {
+    let users, deletedCount = 0, errorCount = 0;
+    do {
+        users = api.filterUsersSync(filter);
+        for (let user of users) {
+            let response = api.deleteAndBlockUserSync(user.id, user.username);
+            if (response.statusCode === 200) {
+                console.log('User deleted and blocked: ', user.username, user.email);
+                deletedCount++;
+            } else {
+                console.log(`ERROR ${response.statusCode} while deleting ${user.username}:`, response.headers.status);
+                errorCount++;
+            }
+        }
+    } while (users.length === 100);  // the API is capped at 100 results - https://meta.discourse.org/t/scroll-through-full-user-list/23047
+    console.log(`${deletedCount} users matching <${filter}> have been deleted and blocked. ${errorCount} errors encountered.`);
+}
+
 console.log('Starting Discourse post-processing...');
+
 doPostProcess();
+
+deleteAndBlockUsers('@mail.bg');
