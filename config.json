@@ -4,7 +4,9 @@
 
   "api": {
     "key": "<your Discourse admin API key here>",
-    "username": "admin",
-  }
+    "username": "admin"
+  },
+
+  "dryRun": false
 
 }

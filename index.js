@@ -147,12 +147,20 @@ function doPostProcess() {
 
             // If the resulting post is no longer the same, update it, unless all we'd do is remove CRs (too insignificant to create a revision for)
             if (processedPost.replacements.length >= 2 || (processedPost.replacements.length === 1 && processedPost.replacements[0] !== 'rmCRs')) {
-                let result = api.updatePostSync(id, processedPost.raw, 'Fix formatting post-migration: ' + processedPost.replacements.join(', '));
-                if (result.statusCode === 200) {
-                    console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
-                    count++;
-                } else {
-                    console.log(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
+                // Dry run, only log post changes
+                if (config.dryRun) {
+                    console.log(`Dry run in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
+                    console.log(`Dry run replacement post: `, processedPost.raw);
+                    count++;                    
+                }
+                else {
+                    let result = api.updatePostSync(id, processedPost.raw, 'Fix formatting post-migration: ' + processedPost.replacements.join(', '));
+                    if (result.statusCode === 200) {
+                        console.log(`Fixed in post ${config.url}/p/${id}:`, processedPost.replacements.join(', '));
+                        count++;
+                    } else {
+                        console.log(`Error ${result.statusCode} while updating post ${config.url}/p/${id}:`, result.headers.status, String.fromCharCode.apply(null, result.body));
+                    }
                 }
             }
         } catch (error) {
