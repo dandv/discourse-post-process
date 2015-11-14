@@ -25,6 +25,10 @@ let tasks = [
         return raw.replace(/\r?\n\[hr]\r?\n/g, '\n\n----------\n');
     },
 
+    //youtube
+    function BBCodeYouTube(raw) {
+        return raw.replace(/\[youtube](.*)?\[\/youtube]/g, 'https://www.youtube.com/watch?v=$1');
+    },
     // Markdown autolinks, so no need for [url=http://example.com]http://example.com[/url]
     function BBCodeAutoURL(raw) {
         return raw.replace(/\[url=(.*?)]\1\[\/url]/g, '$1');
