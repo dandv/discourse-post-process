@@ -2,10 +2,12 @@
 
 This Node.js script uses the [Discourse API](https://meta.discourse.org/t/discourse-api-documentation/22706) (via the [discourse-api module](https://www.npmjs.com/package/discourse-api)) to process posts in a Discourse forum. It will:
 
-* apply a set of regexp-based transformations, such as replacing [BBCode](https://en.wikipedia.org/wiki/BBCode) tags with Markdown ones, e.g. `[hr]` with `------`
+* apply a set of regexp-based transformations, such as replacing [BBCode](https://en.wikipedia.org/wiki/BBCode) tags with Markdown, e.g. `[hr]` with `------`
 * warn about patterns that may cause rendering problems, such as unconverted `[list]`s or [newlines in nested quotes](https://meta.discourse.org/t/weird-parsing-rule-for-nested-quote-preceded-by-newline/33679).
 
 I've tested the script manually on [400+](http://discourse.quantifiedselfforum.com/zeo) posts migrated from MyBB and am quite satisfied with it.
+
+It can also delete users from a list of filters, which is useful to clean up spammers coming from a given domain or matching some email address pattern.
 
 ## Dependencies
 

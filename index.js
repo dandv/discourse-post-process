@@ -175,26 +175,34 @@ function doPostProcess() {
 
 }
 
+/**
+ * Delete users and ban their email and IP.
+ * @param {string} filter - Single or multi-line string, with each line interpreted as a search filter,
+ * e.g. a name or email address. Use the filter *very* carefully - try to make it as strict as possible,
+ * e.g. matching a complete spam domain name, like `@sofimail.com`.
+ */
 function deleteAndBlockUsers(filter) {
     let users, deletedCount = 0, errorCount = 0;
-    do {
-        users = api.filterUsersSync(filter);
-        for (let user of users) {
-            let response = api.deleteAndBlockUserSync(user.id, user.username);
-            if (response.statusCode === 200) {
-                console.log('User deleted and blocked: ', user.username, user.email);
-                deletedCount++;
-            } else {
-                console.log(`ERROR ${response.statusCode} while deleting ${user.username}:`, response.headers.status);
-                errorCount++;
+    filter.split('\n').forEach(function applyFilterLine(line) {
+        do {
+            users = api.filterUsersSync(line);
+            for (let user of users) {
+                let response = api.deleteAndBlockUserSync(user.id, user.username);
+                if (response.statusCode === 200) {
+                    console.log('User deleted and blocked: ', user.username, user.email);
+                    deletedCount++;
+                } else {
+                    console.log(`ERROR ${response.statusCode} while deleting ${user.username}:`, response.headers.status);
+                    errorCount++;
+                }
             }
-        }
-    } while (users.length === 100);  // the API is capped at 100 results - https://meta.discourse.org/t/scroll-through-full-user-list/23047
-    console.log(`${deletedCount} users matching <${filter}> have been deleted and blocked. ${errorCount} errors encountered.`);
+        } while (users.length === 100);  // the API is capped at 100 results - https://meta.discourse.org/t/scroll-through-full-user-list/23047
+    });
+    console.log(`${deletedCount} users matching the filter have been deleted and blocked. ${errorCount} errors encountered.`);
 }
 
 console.log('Starting Discourse post-processing...');
 
 doPostProcess();
 
-deleteAndBlockUsers('@mail.bg');
+deleteAndBlockUsers('@sofimail.com');
